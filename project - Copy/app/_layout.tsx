@@ -18,7 +18,7 @@ export default function RootLayout() {
           <Stack.Screen name="auth/otp-verification" />
           <Stack.Screen name="property/[id]" />
           <Stack.Screen name="subscription" />
-          <Stack.Screen name="chat/[propertyId]" />
+          {/* <Stack.Screen name="chat/[propertyId]" /> */}
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

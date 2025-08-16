@@ -8,199 +8,272 @@ import {
   TextInput,
   Alert,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera } from 'lucide-react-native';
-import { useAuth } from '@/context/AuthContext';
-import { router } from 'expo-router';
+import Slider from '@react-native-community/slider';
+import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
-
-const categories = ['Flat', 'Plot', 'Shop', 'House'];
-const bhkOptions = ['1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK'];
+import { useRouter } from 'expo-router';
 
 export default function PostPropertyScreen() {
-  const { isAuthenticated } = useAuth();
-  const [formData, setFormData] = useState({
+  const router = useRouter();
+  const categories = ['Apartment', 'Villa', 'Studio', 'Plot', 'Office'];
+  const amenitiesList = [
+    'Parking',
+    'Gym',
+    'Swimming Pool',
+    'Garden',
+    'Lift',
+    'Security',
+    'Power Backup',
+    'Clubhouse',
+  ];
+
+  const [formData, setFormData] = useState<{
+    title: string;
+    description: string;
+    category: string;
+    price: number;
+    location: string;
+    area: number;
+    amenities: string[];
+    image: string | null;
+  }>({
     title: '',
     description: '',
     category: '',
-    price: '',
+    price: 5000,
     location: '',
-    bhk: '',
-    area: '',
-    amenities: '',
+    area: 500,
+    amenities: [],
+    image: null,
   });
-  const [selectedImages, setSelectedImages] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleImagePicker = () => {
-    // Replace with your own image picker logic
-    const mockImage =
-      'https://images.pexels.com/photos/1918291/pexels-photo-1918291.jpeg?auto=compress&cs=tinysrgb&w=400';
-    setSelectedImages((prev) => [...prev, mockImage]);
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setFormData({ ...formData, image: result.assets[0].uri });
+    }
   };
 
-  const removeImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const updateFormData = (key: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [key]: value }));
+  const toggleAmenity = (amenity: string) => {
+    const updated = formData.amenities.includes(amenity)
+      ? formData.amenities.filter((a) => a !== amenity)
+      : [...formData.amenities, amenity];
+    setFormData({ ...formData, amenities: updated });
   };
 
   const handleSubmit = async () => {
-    if (!isAuthenticated) {
-      Alert.alert('Login Required', 'Please sign in to post a property', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign In', onPress: () => router.push('/auth/login') },
-      ]);
-      return;
-    }
     if (
       !formData.title ||
-      !formData.price ||
+      !formData.description ||
+      !formData.category ||
       !formData.location ||
-      !formData.category
+      !formData.image
     ) {
-      Alert.alert('Error', 'Please fill all required fields');
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
-    setIsLoading(true);
     try {
-      await axios.post(
+      const res = await axios.post(
         `${process.env.EXPO_PUBLIC_BACKEND_URL}/api/properties`,
-        { ...formData, images: selectedImages },
-        // { headers: { Authorization: `Bearer ${userToken}` } }
+        formData
       );
-      Alert.alert('Success', 'Property posted successfully', [
-        {
-          text: 'OK',
-          onPress: () =>
-            router.push({ pathname: '/', params: { refresh: 'true' } }),
-        },
-      ]);
+      if (res.data.success) {
+        Alert.alert('Success', 'Property posted successfully!');
+        router.push('/components/property/property-list');
+      }
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Failed to post property');
-    } finally {
-      setIsLoading(false);
+      Alert.alert('Error', 'Something went wrong');
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+        
+        {/* Title */}
+        <Text style={styles.label}>Title</Text>
         <TextInput
           style={styles.input}
-          placeholder="Title"
           value={formData.title}
-          onChangeText={(text) => updateFormData('title', text)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Description"
-          multiline
-          value={formData.description}
-          onChangeText={(text) => updateFormData('description', text)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Category"
-          value={formData.category}
-          onChangeText={(text) => updateFormData('category', text)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Price"
-          keyboardType="numeric"
-          value={formData.price}
-          onChangeText={(text) => updateFormData('price', text)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Location"
-          value={formData.location}
-          onChangeText={(text) => updateFormData('location', text)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="BHK"
-          value={formData.bhk}
-          onChangeText={(text) => updateFormData('bhk', text)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Area (sq ft)"
-          value={formData.area}
-          onChangeText={(text) => updateFormData('area', text)}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Amenities"
-          value={formData.amenities}
-          onChangeText={(text) => updateFormData('amenities', text)}
+          onChangeText={(text) => setFormData({ ...formData, title: text })}
+          placeholder="Enter property title"
+          placeholderTextColor="#888"
         />
 
-        {/* Images */}
-        <View style={styles.imageSection}>
-          <TouchableOpacity
-            style={styles.imagePicker}
-            onPress={handleImagePicker}
-          >
-            <Camera size={20} color="#2563eb" />
-            <Text style={styles.imagePickerText}>Add Image</Text>
-          </TouchableOpacity>
-          <ScrollView horizontal>
-            {selectedImages.map((img, index) => (
-              <TouchableOpacity key={index} onPress={() => removeImage(index)}>
-                <Image source={{ uri: img }} style={styles.imagePreview} />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Description */}
+        <Text style={styles.label}>Description</Text>
+        <TextInput
+          style={[styles.input, { height: 90 }]}
+          value={formData.description}
+          onChangeText={(text) => setFormData({ ...formData, description: text })}
+          placeholder="Enter property description"
+          placeholderTextColor="#888"
+          multiline
+        />
+
+        {/* Category */}
+        <Text style={styles.label}>Category</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[
+                styles.chip,
+                formData.category === cat && styles.chipSelected,
+              ]}
+              onPress={() => setFormData({ ...formData, category: cat })}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  formData.category === cat && styles.chipTextSelected,
+                ]}
+              >
+                {cat}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Price Slider */}
+        <Text style={styles.label}>Price: ₹{formData.price}</Text>
+        <Slider
+          style={{ width: '100%', height: 40 }}
+          minimumValue={1000}
+          maximumValue={500000}
+          step={1000}
+          value={formData.price}
+          minimumTrackTintColor="#2563eb"
+          maximumTrackTintColor="#ddd"
+          onValueChange={(value) => setFormData({ ...formData, price: Math.floor(value) })}
+        />
+
+        {/* Location */}
+        <Text style={styles.label}>Location</Text>
+        <TextInput
+          style={styles.input}
+          value={formData.location}
+          onChangeText={(text) => setFormData({ ...formData, location: text })}
+          placeholder="Enter property location"
+          placeholderTextColor="#888"
+        />
+
+        {/* Area Slider */}
+        <Text style={styles.label}>Area: {formData.area} sq.ft</Text>
+        <Slider
+          style={{ width: '100%', height: 40 }}
+          minimumValue={100}
+          maximumValue={10000}
+          step={50}
+          value={formData.area}
+          minimumTrackTintColor="#2563eb"
+          maximumTrackTintColor="#ddd"
+          onValueChange={(value) => setFormData({ ...formData, area: Math.floor(value) })}
+        />
+
+        {/* Amenities */}
+        <Text style={styles.label}>Amenities</Text>
+        <View style={styles.amenitiesContainer}>
+          {amenitiesList.map((amenity) => (
+            <TouchableOpacity
+              key={amenity}
+              style={[
+                styles.chip,
+                formData.amenities.includes(amenity) && styles.chipSelected,
+              ]}
+              onPress={() => toggleAmenity(amenity)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  formData.amenities.includes(amenity) && styles.chipTextSelected,
+                ]}
+              >
+                {amenity}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* Submit */}
-        <TouchableOpacity
-          style={[styles.submitButton, isLoading && styles.disabled]}
-          onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
+        {/* Image Picker */}
+        <Text style={styles.label}>Image</Text>
+        <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
+          {formData.image ? (
+            <Image source={{ uri: formData.image }} style={{ width: '100%', height: 200, borderRadius: 8 }} />
           ) : (
-            <Text style={styles.submitText}>Post Property</Text>
+            <Text style={{ color: '#666' }}>Tap to select an image</Text>
           )}
         </TouchableOpacity>
+
+        {/* Submit Button */}
+        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+          <Text style={styles.buttonText}>Post Property</Text>
+        </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 16 },
+  container: { flex: 1, backgroundColor: '#f9fafb', paddingHorizontal: 20, paddingTop: 10 },
+  label: { fontSize: 15, fontWeight: '600', marginTop: 15, marginBottom: 5, color: '#222' },
   input: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    padding: 12,
+    borderRadius: 12,
+    fontSize: 15,
+    color: '#333',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  chip: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    marginRight: 10,
+    marginTop: 8,
+    backgroundColor: '#fff',
+  },
+  chipSelected: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
+  chipText: { color: '#555', fontSize: 14 },
+  chipTextSelected: { color: '#fff' },
+  amenitiesContainer: { flexDirection: 'row', flexWrap: 'wrap' },
+  imagePicker: {
+    height: 200,
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  submitButton: {
-    backgroundColor: '#2563eb',
-    padding: 14,
-    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 20,
+    marginTop: 8,
+    backgroundColor: '#fafafa',
   },
-  submitText: { color: '#fff', fontSize: 16 },
-  disabled: { opacity: 0.6 },
-  imageSection: { marginVertical: 10 },
-  imagePicker: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  imagePickerText: { marginLeft: 6, color: '#2563eb' },
-  imagePreview: { width: 80, height: 80, borderRadius: 8, marginRight: 8 },
+  button: {
+    backgroundColor: '#2563eb',
+    paddingVertical: 15,
+    borderRadius: 12,
+    marginTop: 25,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  buttonText: { color: '#fff', fontWeight: '700', fontSize: 16, textAlign: 'center' },
 });
+
 
 // app/post-property.tsx
 // import React, { useState } from 'react';

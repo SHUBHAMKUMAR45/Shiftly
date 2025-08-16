@@ -78,7 +78,7 @@ export default function SubscriptionScreen() {
                 <View style={styles.planTitleContainer}>
                   <Text style={styles.planName}>{plan.name}</Text>
                   <Text style={styles.planPrice}>
-                    ${plan.price}/month
+                    Rs{plan.price}/month
                   </Text>
                 </View>
                 {currentPlan?.id === plan.id && (
@@ -154,11 +154,7 @@ export default function SubscriptionScreen() {
           </View>
         </View>
 
-        <View style={styles.disclaimer}>
-          <Text style={styles.disclaimerText}>
-            * This is a demo app. No real payments will be processed.
-          </Text>
-        </View>
+    
       </ScrollView>
     </SafeAreaView>
   );

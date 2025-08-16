@@ -29,24 +29,18 @@ const plans: SubscriptionPlan[] = [
   {
     id: 'basic',
     name: 'Basic',
-    price: 5,
+    price: 299,
     messageLimit: 50,
     features: ['50 messages/month', 'Email support', 'Property alerts']
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: 10,
+    price: 499,
     messageLimit: -1, // Unlimited
     features: ['Unlimited messages', 'Priority support', 'Advanced filters']
   },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 25,
-    messageLimit: -1, // Unlimited
-    features: ['Unlimited messages', 'Priority support', 'Dedicated manager']
-  }
+
 ];
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);

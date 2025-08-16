@@ -1,5 +1,5 @@
 // app/index.tsx (DashboardScreen)
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   StyleSheet,
   FlatList,
   Image,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -21,74 +23,52 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
+import axios from 'axios';
 
 const cityCards = [
-  {
-    id: '1',
-    name: 'Delhi',
-    properties: '1,200+ Properties',
-    image:
-      'https://images.pexels.com/photos/789382/pexels-photo-789382.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: '2',
-    name: 'Noida',
-    properties: '800+ Properties',
-    image:
-      'https://images.pexels.com/photos/1546168/pexels-photo-1546168.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: '3',
-    name: 'Gurgaon',
-    properties: '950+ Properties',
-    image:
-      'https://images.pexels.com/photos/323705/pexels-photo-323705.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-  {
-    id: '4',
-    name: 'Faridabad',
-    properties: '600+ Properties',
-    image:
-      'https://images.pexels.com/photos/323705/pexels-photo-323705.jpeg?auto=compress&cs=tinysrgb&w=400',
-  },
-];
-
-const dummyProperties = [
-  {
-    id: '1',
-    title: 'Modern Apartment',
-    location: 'Sector 62, Noida',
-    price: '₹45,00,000',
-    image:
-      'https://images.pexels.com/photos/1918291/pexels-photo-1918291.jpeg?auto=compress&cs=tinysrgb&w=400',
-    tag: 'Trending',
-    isFavorite: true,
-  },
-  {
-    id: '2',
-    title: 'Luxury Villa',
-    location: 'Golf Course Road, Gurgaon',
-    price: '₹1,20,00,000',
-    image:
-      'https://images.pexels.com/photos/1396132/pexels-photo-1396132.jpeg?auto=compress&cs=tinysrgb&w=400',
-    tag: 'Verified',
-    isFavorite: false,
-  },
+  { id: '1', name: 'Delhi', properties: '1,200+ Properties', image: 'https://images.pexels.com/photos/789382/pexels-photo-789382.jpeg?auto=compress&cs=tinysrgb&w=400' },
+  { id: '2', name: 'Noida', properties: '800+ Properties', image: 'https://images.pexels.com/photos/1546168/pexels-photo-1546168.jpeg?auto=compress&cs=tinysrgb&w=400' },
+  { id: '3', name: 'Gurgaon', properties: '950+ Properties', image: 'https://images.pexels.com/photos/323705/pexels-photo-323705.jpeg?auto=compress&cs=tinysrgb&w=400' },
+  { id: '4', name: 'Faridabad', properties: '600+ Properties', image: 'https://images.pexels.com/photos/323705/pexels-photo-323705.jpeg?auto=compress&cs=tinysrgb&w=400' },
 ];
 
 export default function DashboardScreen() {
   const { user, isAuthenticated } = useAuth();
-
-  const handlePostPropertyPress = () => {
-    if (!isAuthenticated) {
-      router.push('/auth/login');
-    } else {
-      router.push('/post-property');
-    }
+  type Property = {
+    _id: string;
+    title: string;
+    location: string;
+    price: string | number;
+    image?: string;
+    tag?: string;
+    isFavorite?: boolean;
   };
 
-  const renderCityCard = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.cityCard}>
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const handlePostPropertyPress = () => {
+    router.push(isAuthenticated ? '/post-property' : '/auth/login');
+  };
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const res = await axios.get(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/properties`);
+        if (res.data.success) {
+          setProperties(res.data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProperties();
+  }, []);
+
+  const renderCityCard = ({ item }: any) => (
+    <TouchableOpacity style={styles.cityCard} activeOpacity={0.85}>
       <Image source={{ uri: item.image }} style={styles.cityImage} />
       <View style={styles.cityOverlay}>
         <Text style={styles.cityName}>{item.name}</Text>
@@ -97,26 +77,26 @@ export default function DashboardScreen() {
     </TouchableOpacity>
   );
 
-  const renderPropertyCard = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.propertyCard}>
-      <Image source={{ uri: item.image }} style={styles.propertyImage} />
+  const renderPropertyCard = ({ item }: { item: Property }) => (
+    <TouchableOpacity style={styles.propertyCard} activeOpacity={0.9}>
+      <Image source={{ uri: item.image || 'https://via.placeholder.com/150' }} style={styles.propertyImage} />
       <View style={styles.propertyTag}>
-        <Text style={styles.propertyTagText}>{item.tag}</Text>
+        <Text style={styles.propertyTagText}>{item.tag || 'New'}</Text>
       </View>
       <TouchableOpacity style={styles.heartIcon}>
         <Heart
           size={20}
-          color={item.isFavorite ? '#ef4444' : '#ffffff'}
+          color={item.isFavorite ? '#ef4444' : '#fff'}
           fill={item.isFavorite ? '#ef4444' : 'transparent'}
         />
       </TouchableOpacity>
       <View style={styles.propertyInfo}>
-        <Text style={styles.propertyTitle}>{item.title}</Text>
+        <Text style={styles.propertyTitle} numberOfLines={1}>{item.title}</Text>
         <View style={styles.locationContainer}>
           <MapPin size={14} color="#6b7280" />
           <Text style={styles.propertyLocation}>{item.location}</Text>
         </View>
-        <Text style={styles.propertyPrice}>{item.price}</Text>
+        <Text style={styles.propertyPrice}>₹{item.price}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -126,16 +106,16 @@ export default function DashboardScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity>
-          <Menu size={24} color="#1f2937" />
+          <Menu size={26} color="#1f2937" />
         </TouchableOpacity>
         <Text style={styles.appName}>Shifly</Text>
         <TouchableOpacity onPress={() => router.push('/notifications')}>
-          <Bell size={24} color="#1f2937" />
+          <Bell size={26} color="#1f2937" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Welcome Section */}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Welcome */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>
             Welcome back, {user?.firstName || 'Guest'}!
@@ -145,7 +125,7 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
-        {/* Search Bar */}
+        {/* Search */}
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
             <Search size={20} color="#6b7280" />
@@ -154,18 +134,9 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <TouchableOpacity style={styles.filterButton}>
-            <Filter size={20} color="#ffffff" />
+            <Filter size={20} color="#fff" />
           </TouchableOpacity>
         </View>
-
-        {/* Post Property Button */}
-        <TouchableOpacity
-          style={styles.postButton}
-          onPress={handlePostPropertyPress}
-        >
-          <PlusCircle size={20} color="#fff" />
-          <Text style={styles.postButtonText}>Post a Property</Text>
-        </TouchableOpacity>
 
         {/* Cities */}
         <View style={styles.section}>
@@ -179,47 +150,116 @@ export default function DashboardScreen() {
             contentContainerStyle={styles.cityList}
           />
         </View>
+       
 
-        {/* Trending Properties */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Trending Properties</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={dummyProperties}
-            renderItem={renderPropertyCard}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.propertyList}
+{/* Trending Properties */}
+<View style={styles.section}>
+  <View style={styles.sectionHeader}>
+    <Text style={styles.sectionTitle}>Trending Properties</Text>
+    <TouchableOpacity>
+      <Text style={styles.viewAllText}>View All</Text>
+    </TouchableOpacity>
+  </View>
+
+  {loading ? (
+    <ActivityIndicator size="large" color="#2563eb" />
+  ) : (
+    <FlatList
+      data={properties.slice(0, 5)} // first 5 as trending
+      renderItem={({ item }) => (
+        <TouchableOpacity style={styles.trendingCard} activeOpacity={0.9}>
+          <Image
+            source={{ uri: item.image || 'https://via.placeholder.com/150' }}
+            style={styles.trendingImage}
           />
-        </View>
+          <View style={styles.trendingTag}>
+            <Text style={styles.trendingTagText}>🔥 Trending</Text>
+          </View>
+          <TouchableOpacity style={styles.heartIcon}>
+            <Heart
+              size={20}
+              color={item.isFavorite ? '#ef4444' : '#fff'}
+              fill={item.isFavorite ? '#ef4444' : 'transparent'}
+            />
+          </TouchableOpacity>
+          <View style={styles.propertyInfo}>
+            <Text style={styles.propertyTitle} numberOfLines={1}>{item.title}</Text>
+            <View style={styles.locationContainer}>
+              <MapPin size={14} color="#6b7280" />
+              <Text style={styles.propertyLocation}>{item.location}</Text>
+            </View>
+            <Text style={styles.propertyPrice}>₹{item.price}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+      keyExtractor={(item) => item._id}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.propertyList}
+    />
+  )}
+</View>
+
+
+        {/* Property Listed */}
+        <View style={styles.section}>
+  <View style={styles.sectionHeader}>
+    <Text style={styles.sectionTitle}>Property Listed</Text>
+    <TouchableOpacity onPress={() => router.push('/components/property/property-list')}>
+      <Text style={styles.viewAllText}>View All</Text>
+    </TouchableOpacity>
+  </View>
+
+  {loading ? (
+    <ActivityIndicator size="large" color="#2563eb" />
+  ) : (
+    <FlatList
+      data={properties}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          onPress={() => router.push(`/components/property/${item._id}`)}
+        >
+          {renderPropertyCard({ item })}
+        </TouchableOpacity>
+      )}
+      keyExtractor={(item) => item._id}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.propertyList}
+    />
+  )}
+</View>
+
+
+        {/* Post Property Button */}
+        <TouchableOpacity style={styles.postButton} onPress={handlePostPropertyPress}>
+          <PlusCircle size={20} color="#fff" />
+          <Text style={styles.postButtonText}>Post a Property</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f9fafb' },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     backgroundColor: '#fff',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e7eb',
   },
-  appName: { fontSize: 20, fontWeight: 'bold', color: '#1f2937' },
-  content: { flex: 1 },
-  welcomeSection: { padding: 16 },
+  appName: { fontSize: 22, fontWeight: 'bold', color: '#1f2937' },
+  welcomeSection: { paddingHorizontal: 18, paddingVertical: 12 },
   welcomeText: { fontSize: 20, fontWeight: 'bold', color: '#1f2937' },
-  welcomeSubtext: { fontSize: 14, color: '#6b7280' },
+  welcomeSubtext: { fontSize: 14, color: '#6b7280', marginTop: 4 },
   searchContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     marginBottom: 16,
     gap: 8,
   },
@@ -229,12 +269,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    elevation: 1,
   },
   searchPlaceholder: { color: '#6b7280', fontSize: 14, marginLeft: 8 },
   filterButton: {
@@ -244,29 +281,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  postButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2563eb',
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginBottom: 20,
-    justifyContent: 'center',
-  },
-  postButtonText: { color: '#fff', marginLeft: 8 },
-  section: { marginBottom: 20 },
+  section: { marginBottom: 24 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     marginBottom: 8,
   },
   sectionTitle: { fontSize: 16, fontWeight: '600', color: '#1f2937' },
   viewAllText: { color: '#2563eb', fontWeight: '600' },
-  cityList: { paddingHorizontal: 16, gap: 12 },
-  cityCard: { width: 140, height: 100, borderRadius: 12, overflow: 'hidden' },
+  cityList: { paddingHorizontal: 18, gap: 14 },
+  cityCard: {
+    width: 140,
+    height: 100,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#e5e7eb',
+  },
   cityImage: { width: '100%', height: '100%' },
   cityOverlay: {
     position: 'absolute',
@@ -274,17 +305,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0,0,0,0.4)',
-    padding: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
   },
-  cityName: { color: '#fff', fontWeight: '600' },
-  cityProperties: { color: '#ddd', fontSize: 12 },
-  propertyList: { paddingHorizontal: 16, gap: 12 },
+  cityName: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  cityProperties: { color: '#f3f4f6', fontSize: 12 },
+  propertyList: { paddingHorizontal: 18, gap: 14 },
   propertyCard: {
     width: 200,
     borderRadius: 12,
-    overflow: 'hidden',
     backgroundColor: '#fff',
-    elevation: 3,
+    overflow: 'hidden',
+    elevation: 2,
   },
   propertyImage: { width: '100%', height: 120 },
   propertyTag: {
@@ -292,8 +324,8 @@ const styles = StyleSheet.create({
     top: 8,
     left: 8,
     backgroundColor: '#2563eb',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 4,
   },
   propertyTagText: { color: '#fff', fontSize: 12 },
@@ -305,7 +337,7 @@ const styles = StyleSheet.create({
     padding: 6,
     borderRadius: 20,
   },
-  propertyInfo: { padding: 8 },
+  propertyInfo: { padding: 10 },
   propertyTitle: { fontSize: 14, fontWeight: '600' },
   locationContainer: {
     flexDirection: 'row',
@@ -313,8 +345,49 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   propertyLocation: { marginLeft: 4, color: '#6b7280', fontSize: 12 },
-  propertyPrice: { fontWeight: '700', color: '#16a34a' },
-});
+  propertyPrice: { fontWeight: '700', color: '#16a34a', marginTop: 2 },
+  postButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginHorizontal: 18,
+    marginBottom: 20,
+    justifyContent: 'center',
+    elevation: 2,
+  },
+  postButtonText: { color: '#fff', fontSize: 15, marginLeft: 8 },
+  trendingCard: {
+  width: 200,
+  borderRadius: 12,
+  backgroundColor: '#fff',
+  overflow: 'hidden',
+  elevation: 3,
+},
+trendingImage: {
+  width: '100%',
+  height: 120,
+},
+trendingTag: {
+  position: 'absolute',
+  top: 8,
+  left: 8,
+  backgroundColor: '#f97316', // orange
+  paddingHorizontal: 8,
+  paddingVertical: 3,
+  borderRadius: 4,
+},
+trendingTagText: {
+  color: '#fff',
+  fontSize: 12,
+  fontWeight: '600',
+},
+
+})
+
+
+
 
 // import React, { useState, useCallback } from 'react';
 // import {
